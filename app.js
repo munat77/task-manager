@@ -1,13 +1,15 @@
-// Task array to store all tasks
+// Task array
 let tasks = [];
-let currentFilter = 'all';  // ← NEW: tracks which filter is active
+let currentFilter = 'all';
 
-// Get DOM elements
+// DOM elements
 const taskInput = document.getElementById('taskInput');
+const dueDateInput = document.getElementById('dueDate');
+const prioritySelect = document.getElementById('prioritySelect');
 const addTaskBtn = document.getElementById('addTaskBtn');
 const taskList = document.getElementById('taskList');
 
-// Load tasks from localStorage on startup
+// Load from localStorage
 function loadTasks() {
     const saved = localStorage.getItem('tasks');
     if (saved) {
@@ -15,14 +17,41 @@ function loadTasks() {
     }
 }
 
-// Save tasks to localStorage
+// Save to localStorage
 function saveTasks() {
     localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
-// Function to display tasks (UPDATED with filter support)
+// Update statistics
+function updateStats() {
+    const total = tasks.length;
+    const active = tasks.filter(t => !t.completed).length;
+    const completed = tasks.filter(t => t.completed).length;
+    
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('activeCount').textContent = active;
+    document.getElementById('completedCount').textContent = completed;
+}
+
+// Check if a due date is overdue
+function isOverdue(dueDate) {
+    if (!dueDate) return false;
+    const today = new Date().toISOString().split('T')[0];
+    return dueDate < today;
+}
+
+// Format priority text
+function getPriorityBadge(priority) {
+    const badges = {
+        high: '<span class="priority-badge priority-high">🔴 High</span>',
+        medium: '<span class="priority-badge priority-medium">🟡 Medium</span>',
+        low: '<span class="priority-badge priority-low">🟢 Low</span>'
+    };
+    return badges[priority] || badges.low;
+}
+
+// Display tasks
 function displayTasks() {
-    // Filter tasks based on currentFilter
     let filteredTasks = tasks;
     
     if (currentFilter === 'active') {
@@ -32,58 +61,78 @@ function displayTasks() {
     }
     
     if (filteredTasks.length === 0) {
-        let message = 'No tasks yet. Add one above!';
-        if (currentFilter === 'active') message = 'No active tasks! 🎉';
-        if (currentFilter === 'completed') message = 'No completed tasks yet';
+        let message = '✨ No tasks yet. Add one above!';
+        if (currentFilter === 'active') message = '🎉 No active tasks! Great job!';
+        if (currentFilter === 'completed') message = '📝 No completed tasks yet';
         taskList.innerHTML = `<li style="color: #999; text-align: center;">${message}</li>`;
+        updateStats();
         return;
     }
 
     taskList.innerHTML = '';
     filteredTasks.forEach((task) => {
-        // Find the original index for operations
         const originalIndex = tasks.findIndex(t => t === task);
-        
         const li = document.createElement('li');
         li.className = task.completed ? 'completed' : '';
         
+        // Checkbox
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = task.completed;
+        checkbox.style.cursor = 'pointer';
         checkbox.addEventListener('change', () => toggleComplete(originalIndex));
         
-        const span = document.createElement('span');
-        span.textContent = task.text;
+        // Task text (editable on double-click)
+        const taskSpan = document.createElement('span');
+        taskSpan.className = 'task-text';
+        taskSpan.innerHTML = `${task.text} ${getPriorityBadge(task.priority)}`;
+        taskSpan.ondblclick = () => editTask(originalIndex);
         
+        // Due date display
+        const dueDateSpan = document.createElement('span');
+        dueDateSpan.className = `due-date ${isOverdue(task.dueDate) && !task.completed ? 'overdue' : ''}`;
+        if (task.dueDate) {
+            dueDateSpan.textContent = `📅 ${task.dueDate}`;
+            if (isOverdue(task.dueDate) && !task.completed) {
+                dueDateSpan.textContent = `⚠️ Overdue: ${task.dueDate}`;
+            }
+        }
+        
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.textContent = '✏️';
+        editBtn.className = 'edit-btn';
+        editBtn.title = 'Double-click text or click edit';
+        editBtn.addEventListener('click', () => editTask(originalIndex));
+        
+        // Delete button
         const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete';
+        deleteBtn.textContent = '🗑️';
         deleteBtn.className = 'delete-btn';
         deleteBtn.addEventListener('click', () => deleteTask(originalIndex));
         
         li.appendChild(checkbox);
-        li.appendChild(span);
+        li.appendChild(taskSpan);
+        li.appendChild(dueDateSpan);
+        li.appendChild(editBtn);
         li.appendChild(deleteBtn);
         taskList.appendChild(li);
     });
+    
+    updateStats();
 }
 
-// NEW: Function to set active filter
-function setFilter(filter) {
-    currentFilter = filter;
-    
-    // Update active button styling
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        if (btn.dataset.filter === filter) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-    
-    displayTasks();
+// Edit task
+function editTask(index) {
+    const newText = prompt('Edit task:', tasks[index].text);
+    if (newText && newText.trim()) {
+        tasks[index].text = newText.trim();
+        saveTasks();
+        displayTasks();
+    }
 }
 
-// Function to add a new task
+// Add new task
 function addTask() {
     const text = taskInput.value.trim();
     if (text === '') {
@@ -93,26 +142,68 @@ function addTask() {
     
     tasks.push({
         text: text,
-        completed: false
+        completed: false,
+        dueDate: dueDateInput.value || null,
+        priority: prioritySelect.value,
+        createdAt: new Date().toISOString()
     });
     
-    saveTasks();
     taskInput.value = '';
+    dueDateInput.value = '';
+    prioritySelect.value = 'low';
+    saveTasks();
     displayTasks();
 }
 
-// Function to toggle task completion
+// Toggle complete
 function toggleComplete(index) {
     tasks[index].completed = !tasks[index].completed;
     saveTasks();
-    displayTasks();  // Refresh to respect current filter
+    displayTasks();
 }
 
-// Function to delete a task
+// Delete task
 function deleteTask(index) {
-    tasks.splice(index, 1);
-    saveTasks();
+    if (confirm('Delete this task?')) {
+        tasks.splice(index, 1);
+        saveTasks();
+        displayTasks();
+    }
+}
+
+// Set filter
+function setFilter(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        if (btn.dataset.filter === filter) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
     displayTasks();
+}
+
+// Dark mode toggle
+function initDarkMode() {
+    const darkModeBtn = document.getElementById('darkModeToggle');
+    const savedMode = localStorage.getItem('darkMode');
+    
+    if (savedMode === 'enabled') {
+        document.body.classList.add('dark-mode');
+        darkModeBtn.textContent = '☀️ Light';
+    }
+    
+    darkModeBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        if (document.body.classList.contains('dark-mode')) {
+            localStorage.setItem('darkMode', 'enabled');
+            darkModeBtn.textContent = '☀️ Light';
+        } else {
+            localStorage.setItem('darkMode', 'disabled');
+            darkModeBtn.textContent = '🌙 Dark';
+        }
+    });
 }
 
 // Event listeners
@@ -121,13 +212,13 @@ taskInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addTask();
 });
 
-// NEW: Add filter button event listeners
 document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         setFilter(btn.dataset.filter);
     });
 });
 
-// Load tasks and display
+// Initialize
 loadTasks();
 displayTasks();
+initDarkMode();

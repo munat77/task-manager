@@ -6,6 +6,19 @@ const taskInput = document.getElementById('taskInput');
 const addTaskBtn = document.getElementById('addTaskBtn');
 const taskList = document.getElementById('taskList');
 
+// Load tasks from localStorage on startup
+function loadTasks() {
+    const saved = localStorage.getItem('tasks');
+    if (saved) {
+        tasks = JSON.parse(saved);
+    }
+}
+
+// Save tasks to localStorage
+function saveTasks() {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+}
+
 // Function to display tasks
 function displayTasks() {
     if (tasks.length === 0) {
@@ -51,6 +64,7 @@ function addTask() {
         completed: false
     });
     
+    saveTasks();  // ← Saves after adding
     taskInput.value = '';
     displayTasks();
 }
@@ -58,12 +72,14 @@ function addTask() {
 // Function to toggle task completion
 function toggleComplete(index) {
     tasks[index].completed = !tasks[index].completed;
+    saveTasks();  // ← Saves after toggle
     displayTasks();
 }
 
 // Function to delete a task
 function deleteTask(index) {
     tasks.splice(index, 1);
+    saveTasks();  // ← Saves after delete
     displayTasks();
 }
 
@@ -73,6 +89,6 @@ taskInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addTask();
 });
 
-// Initial display
+// Load tasks and display
+loadTasks();
 displayTasks();
-

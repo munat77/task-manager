@@ -1,7 +1,5 @@
 # Task Manager Pro
 
-![Task Manager App](task-main.png)
-
 A feature-rich task management app with dark mode, due dates, and priority levels.
 
 ## Live Demo
@@ -17,11 +15,13 @@ A feature-rich task management app with dark mode, due dates, and priority level
 - ✅ Priority levels (Low, Medium, High)
 - ✅ Due date picker
 - ✅ Data saves automatically (localStorage)
+
 ## Screenshots
 
 | Light Mode | Dark Mode | Filter View |
 |------------|-----------|-------------|
 | ![Light mode](task-main.png) | ![Dark mode](task-darkmode.png) | ![Filters](task-filters.png) |
+
 ## Technologies Used
 
 - HTML5
